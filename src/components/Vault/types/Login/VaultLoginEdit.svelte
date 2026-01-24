@@ -49,12 +49,11 @@
     <div class="uk-padding">
         <ItemForm
             id={formId}
-            title="Login Credentials"
             itemDetails={vaultItemDetail}
             onsubmit={onSave} 
             {errors}
         >
-            <LoginForm data={vaultItemDetail.data} />
+            <LoginForm title="Login Credentials" data={vaultItemDetail.data} />
         </ItemForm>
     </div>
 {/if}

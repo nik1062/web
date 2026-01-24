@@ -66,12 +66,11 @@
 <div class="uk-modal-body">
     <ItemForm
         id="cardForm"
-        title="Card details"
         onsubmit={onSubmit}
         {itemDetails}
         {errors}
     >
-        <CardForm data={itemData} />
+        <CardForm title="Card details" data={itemData} />
     </ItemForm>
 </div>
 

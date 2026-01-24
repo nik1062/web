@@ -7,14 +7,12 @@
 
     let {
         id,
-        title,
         itemDetails,
         onsubmit,
         errors,
         children = null
     }: {
         id: string,
-        title: string,
         itemDetails: FormItemDetails,
         onsubmit: FormCallBack,
         errors: Array<string>,
@@ -69,11 +67,7 @@
 
     <!-- Custom fieldset -->
      {#if children}
-        { /* @ts-ignore */ null }
-        <fieldset class="uk-fieldset uk-margin" uk-grid>
-            <legend class="uk-legend uk-text-default uk-text-bold">{ title }</legend>
-            {@render children()}
-        </fieldset>
+      {@render children()}
      {/if}
 
     { /* @ts-ignore */ null }
