@@ -47,7 +47,6 @@
     <div class="uk-padding">
         <ItemForm
             id={formId}
-            title="Secure notes"
             itemDetails={vaultItemDetail}
             onsubmit={onSave} 
             {errors}

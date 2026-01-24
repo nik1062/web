@@ -55,7 +55,6 @@
 <div class="uk-modal-body">
     <ItemForm
         id="cardForm"
-        title="Secure notes"
         onsubmit={onSubmit}
         {itemDetails}
         {errors}
