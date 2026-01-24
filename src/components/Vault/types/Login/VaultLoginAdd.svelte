@@ -63,12 +63,11 @@
 <div class="uk-modal-body">
     <ItemForm
         id="cardForm"
-        title="Login Credentials"
         onsubmit={onSubmit}
         {itemDetails}
         {errors}
     >
-        <LoginForm data={itemData} />
+        <LoginForm title="Login Credentials" data={itemData} />
     </ItemForm>
 </div>
 
