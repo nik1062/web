@@ -49,12 +49,11 @@
     <div class="uk-padding">
         <ItemForm
             id={formId}
-            title="Card details"
             itemDetails={vaultItemDetail}
             onsubmit={onSave} 
             {errors}
         >
-            <CardForm data={vaultItemDetail.data} />
+            <CardForm title="Card details" data={vaultItemDetail.data} />
         </ItemForm>
     </div>
 {/if}
