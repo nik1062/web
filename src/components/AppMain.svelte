@@ -68,6 +68,7 @@
         [CipherCategory.CARDS]: (items) => items.filter(item => item.type === CipherType.CARD && item.status === VaultStatus.ACTIVE),
         [CipherCategory.LOGINS]: (items) => items.filter(item => item.type === CipherType.LOGIN && item.status === VaultStatus.ACTIVE),
         [CipherCategory.SECURE_NOTES]: (items) => items.filter(item => item.type === CipherType.SECURE_NOTE && item.status === VaultStatus.ACTIVE),
+        [CipherCategory.DATABASES]: (items) => items.filter(item => item.type === CipherType.DATABASE && item.status === VaultStatus.ACTIVE),
         [CipherCategory.ARCHIVES]: (items) => items.filter(item => item.status === VaultStatus.ARCHIVED),
         [CipherCategory.RECENTLY_DELETED]: (items) => items.filter(item => item.status === VaultStatus.DELETED),
     };

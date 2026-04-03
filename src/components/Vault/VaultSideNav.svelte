@@ -44,6 +44,11 @@
                                 <Icon class="uk-margin-small-right" icon="hugeicons:notebook" width="24" height="24" /> Secure Notes
                             </a>
                         </li>
+                        <li class:x-selected={$categoryFilter==CipherCategory.DATABASES} class="x-nested-sidenav-item uk-border-rounded">
+                            <a href={null} onclick={() => { $categoryFilter=CipherCategory.DATABASES }} class="uk-text-small">
+                                <Icon class="uk-margin-small-right" icon="hugeicons:database" width="24" height="24" /> Databases
+                            </a>
+                        </li>
                     </ul>
                 </li>
             </ul>

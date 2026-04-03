@@ -10,6 +10,9 @@
     import VaultSecureNoteEdit from "$components/Vault/types/SecureNote//VaultSecureNoteEdit.svelte";
     import VaultSecureNoteDetail from "$components/Vault/types/SecureNote/VaultSecureNoteDetail.svelte";
 
+    import VaultDatabaseDetail from "$components/Vault/types/Database/VaultDatabaseDetail.svelte";
+    import VaultDatabaseEdit from "$components/Vault/types/Database/VaultDatabaseEdit.svelte";
+
     import { extractSymmetricKey } from "$lib/key-generation";
     import { restoreCipherFromDelete, updateCipher, updateCipherToDelete } from "$lib/services/ciphers";
     import { categoryFilter, selectedVaultItem } from "$lib/stores";
@@ -34,6 +37,10 @@
         "CARD": {
             "details": VaultCardDetail,
             "edit": VaultCardEdit
+        },
+        "DATABASE": {
+            "details": VaultDatabaseDetail,
+            "edit": VaultDatabaseEdit,
         }
     };
 

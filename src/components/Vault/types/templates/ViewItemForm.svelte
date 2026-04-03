@@ -10,16 +10,20 @@
     import type { VaultDetailField } from "$lib/models/data";
     import type { FormItemDetails, FormItemHistory } from "$lib/types";
 
+    import type { Snippet } from "svelte";
+
     let { 
         itemDetails,
         detailTitle,
         itemHistory,
-        fields
+        fields,
+        beforeFields,
      }: {
         itemDetails: FormItemDetails,
         itemHistory: FormItemHistory,
         detailTitle?: string,
-        fields?: Array<VaultDetailField>
+        fields?: Array<VaultDetailField>,
+        beforeFields?: Snippet,
     } = $props();
 
     // Determine whether there are fields to show.
@@ -64,6 +68,11 @@
         </div>
     </div>
 
+    <!-- Optional content injected between header and fields (e.g. a view-mode toggle). -->
+    {#if beforeFields}
+        {@render beforeFields()}
+    {/if}
+
     <!-- Body: dynamic field contents. -->
     {#if detailTitle}
         <div class="uk-padding-small">
@@ -72,7 +81,7 @@
             </div>
             <div class="x-panel uk-width-1-1 uk-padding-small">
                 {#if fields && hasFields}
-                    {#each fields as field, i}
+                    {#each fields as field, i (field.label)}
                         {#if field.value && !field.hidden}
                             <div class="uk-margin" class:uk-margin-remove-bottom={i === fields.length - 1 || i === 0}>
                                 <ViewItemFormField field={field} />
