@@ -2,7 +2,7 @@ import { authenticator } from "otplib";
 
 import UIkit from "uikit";
 
-import type { CipherCardData, CipherData, CipherLoginData } from "$lib/types";
+import type { CipherCardData, CipherData, CipherDatabaseData, CipherLoginData } from "$lib/types";
 
 const CLIPBOARD_CLEAR_DELAY = 1000 * 30; // 30 seconds
 
@@ -45,7 +45,7 @@ export abstract class VaultDetailField {
   }
 }
 
-class VaultDetailTextField extends VaultDetailField {
+export class VaultDetailTextField extends VaultDetailField {
   constructor(value: any | null, label: string, hidden: boolean = false) {
     super(value, label, "text", hidden);
   }
@@ -166,5 +166,29 @@ export class VaultLoginDetailComponentData extends VaultDetailComponentData<Ciph
         "Verification code (TOTP)"
       ),
     ];
+  }
+}
+
+export class VaultDatabaseDetailComponentData extends VaultDetailComponentData<CipherDatabaseData> {
+  constructor(data: CipherDatabaseData) {
+    super(data);
+  }
+
+  protected fieldDefinitions() {
+    const fields: Array<VaultDetailField> = [
+      new VaultDetailTextField(this.data.engine, "Engine")
+    ];
+
+    if (this.data.connectionType === "URL") {
+      fields.push(new VaultDetailPasswordField(this.data.url, "Connection URL"));
+    } else {
+      if (this.data.host) fields.push(new VaultDetailTextField(this.data.host, "Host"));
+      if (this.data.port) fields.push(new VaultDetailTextField(this.data.port, "Port"));
+      if (this.data.database) fields.push(new VaultDetailTextField(this.data.database, "Database"));
+      if (this.data.username) fields.push(new VaultDetailTextField(this.data.username, "Username"));
+      if (this.data.password) fields.push(new VaultDetailPasswordField(this.data.password, "Password"));
+    }
+
+    return fields;
   }
 }
