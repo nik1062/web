@@ -4,6 +4,7 @@ import {
   type Cipher,
   type CipherCardData,
   type CipherData,
+  type CipherDatabaseData,
   type CipherLoginData,
   type CipherSecuresNoteData,
   type VaultItemDetail,
@@ -123,6 +124,57 @@ class LoginDataEncryptor extends CipherEncryptor {
   }
 }
 
+class DatabaseDataEncryptor extends CipherEncryptor {
+  async encryptData(data: CipherDatabaseData): Promise<CipherData> {
+    if (!data) {
+      throw new Error("Database data is required for encryption.");
+    }
+
+    return {
+      engine: await this.cipherKey.encrypt(this.encoder.encode(data.engine)),
+      connectionType: await this.cipherKey.encrypt(this.encoder.encode(data.connectionType)),
+      url: data.url ? await this.cipherKey.encrypt(this.encoder.encode(data.url)) : "",
+      host: data.host ? await this.cipherKey.encrypt(this.encoder.encode(data.host)) : "",
+      port: data.port ? await this.cipherKey.encrypt(this.encoder.encode(data.port)) : "",
+      database: data.database ? await this.cipherKey.encrypt(this.encoder.encode(data.database)) : "",
+      username: data.username ? await this.cipherKey.encrypt(this.encoder.encode(data.username)) : "",
+      password: data.password ? await this.cipherKey.encrypt(this.encoder.encode(data.password)) : "",
+    } satisfies CipherDatabaseData;
+  }
+
+  async decryptDataForVaultContent(data: CipherDatabaseData): Promise<CipherData> {
+    if (!data) {
+      throw new Error("Database data is required for decryption.");
+    }
+
+    return {
+      engine: await this.cipherKey.decryptText(data.engine),
+      connectionType: await this.cipherKey.decryptText(data.connectionType),
+      url: data.url ? await this.cipherKey.decryptText(data.url) : "",
+      host: data.host ? await this.cipherKey.decryptText(data.host) : "",
+      port: data.port ? await this.cipherKey.decryptText(data.port) : "",
+      database: data.database ? await this.cipherKey.decryptText(data.database) : "",
+      username: data.username ? await this.cipherKey.decryptText(data.username) : "",
+      password: data.password ? await this.cipherKey.decryptText(data.password) : "",
+    } satisfies CipherDatabaseData;
+  }
+
+  async decryptDataForVaultItem(data: CipherDatabaseData): Promise<string> {
+    if (!data) {
+      throw new Error("Database data is required for decryption.");
+    }
+    const engine = await this.cipherKey.decryptText(data.engine);
+    let extra = "";
+    const connectionType = await this.cipherKey.decryptText(data.connectionType);
+    if (connectionType === "URL") {
+       extra = data.url ? await this.cipherKey.decryptText(data.url) : "";
+    } else {
+       extra = data.host ? await this.cipherKey.decryptText(data.host) : "";
+    }
+    return engine + (extra ? ` (${extra})` : "");
+  }
+}
+
 // No encryption needed for secure notes data.
 // This is only a placeholder for behavioral consistency.
 class SecureNotesDataEncryptor extends CipherEncryptor {
@@ -146,6 +198,8 @@ const ENCRYPTOR_FACTORY: Record<
     new LoginDataEncryptor(cipherKey),
   [CipherType.SECURE_NOTE]: (cipherKey: CipherKey) =>
     new SecureNotesDataEncryptor(cipherKey),
+  [CipherType.DATABASE]: (cipherKey: CipherKey) =>
+    new DatabaseDataEncryptor(cipherKey),
 };
 
 export async function encryptCipher({

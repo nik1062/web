@@ -9,6 +9,13 @@ export const HTTPStatus = {
   UNPROCESSABLE_ENTITY: 422,
 };
 
+function getCookie(name: string) {
+  if (typeof document === 'undefined') return undefined;
+  const value = `; ${document.cookie}`;
+  const parts = value.split(`; ${name}=`);
+  if (parts.length === 2) return parts.pop()?.split(";").shift();
+}
+
 interface RequestArgs {
   method: string;
   url: string;
@@ -25,10 +32,20 @@ export async function requests({
   headers = { "content-type": "application/json" },
   options = {},
 }: RequestArgs): Promise<any> {
+    const csrftoken = getCookie("csrftoken");
+    const mergedHeaders = {
+        ...headers,
+    };
+
+    if (csrftoken) {
+        // @ts-ignore
+        mergedHeaders["X-CSRFToken"] = csrftoken;
+    }
+
   const response = await fetch(url, {
     method: method,
     body: JSON.stringify(payload),
-    headers: headers,
+    headers: mergedHeaders,
     ...options,
   });
 

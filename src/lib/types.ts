@@ -7,6 +7,17 @@ export interface CipherCardData {
   securityCode: string;
 }
 
+export interface CipherDatabaseData {
+  engine: string;
+  connectionType: string;
+  url?: string;
+  host?: string;
+  port?: string;
+  database?: string;
+  username?: string;
+  password?: string;
+}
+
 export interface CipherLoginData {
   username: string;
   password: string;
@@ -20,12 +31,14 @@ export interface CipherSecuresNoteData {
 export type CipherData =
   | CipherLoginData
   | CipherSecuresNoteData
-  | CipherCardData;
+  | CipherCardData
+  | CipherDatabaseData;
 
 export enum CipherType {
   CARD = "CARD",
   LOGIN = "LOGIN",
   SECURE_NOTE = "SECURE_NOTE",
+  DATABASE = "DATABASE",
 }
 
 export enum CipherStatus {
@@ -84,6 +97,7 @@ export enum CipherCategory {
   CARDS = "CARDS",
   LOGINS = "LOGINS",
   SECURE_NOTES = "SECURE_NOTES",
+  DATABASES = "DATABASES",
   RECENTLY_DELETED = "DELETED",
 }
 
