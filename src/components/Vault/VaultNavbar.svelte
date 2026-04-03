@@ -8,6 +8,7 @@
     import VaultCardAdd from '$components/Vault/types/Card/VaultCardAdd.svelte';
     import VaultLoginAdd from '$components/Vault/types/Login/VaultLoginAdd.svelte';
     import VaultSecureNoteAdd from '$components/Vault/types/SecureNote/VaultSecureNoteAdd.svelte';
+    import VaultDatabaseAdd from '$components/Vault/types/Database/VaultDatabaseAdd.svelte';
 
     import { searchFilter } from '$lib/stores';
     import { logoutAccount } from '$lib/services/accounts';
@@ -18,6 +19,7 @@
         "login": VaultLoginAdd,
         "secureNote": VaultSecureNoteAdd,
         "card": VaultCardAdd,
+        "database": VaultDatabaseAdd,
     };
 
     const ModalComponent = $derived(ModalMapper[selectedModal!]);
@@ -91,6 +93,20 @@
                             { /* @ts-ignore */ null }
                             <Icon class="uk-margin-small-right"  icon="hugeicons:notebook" width="24" height="24" />
                             Secure note
+                        </a>
+                    </li>
+                    <li class="uk-text-default">
+                        { /* @ts-ignore */ null }
+                        <a
+                            href={null}
+                            uk-toggle="target: #vault-modal"
+                            onclick={() => {
+                                selectedModal = "database";
+                                UIkit.dropdown("#new-item-dropdown").hide();
+                            }}>
+                            { /* @ts-ignore */ null }
+                            <Icon class="uk-margin-small-right"  icon="hugeicons:database" width="24" height="24" />
+                            Database
                         </a>
                     </li>
                 </ul>
