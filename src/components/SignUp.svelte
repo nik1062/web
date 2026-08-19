@@ -13,10 +13,12 @@
     }
 
     let signUpSuccessful = $state(false);
-    let cfTurnsTileToken: string | undefined = $state();
+    let cfTurnsTileToken: string | null = $state(null);
 
     const serverErrors: Array<{message: string}> = $state([]);
     const invalidityMapper: {[key: string]: any} = $state({});
+    
+    const enableTurnstile = PUBLIC_CF_ENABLE_TURNSTILE == "true";
 
     let isFormValid: boolean = $derived.by(() => {
         const invalidityValues = Object.values(invalidityMapper);
@@ -59,6 +61,7 @@
         e.preventDefault();
 
         formSubmitted = true;
+        serverErrors.length = 0;
 
         const form = e.currentTarget;
         const data = new FormData(form);
@@ -72,10 +75,11 @@
         // ensure that these fields validity check beyond required.
         if (isFormValid && validateName()) {
             try {
-                await createAccount(nameField!.value!, emailField!.value!, cfTurnsTileToken);
+                await createAccount(nameField!.value!, emailField!.value!, cfTurnsTileToken!);
                 signUpSuccessful = true;
-            } catch (error: any) {  // TODO: do something about error handling typing.
+            } catch (error: any) {
                 const error_ = error.error;
+                cfTurnsTileToken = null
                 serverErrors.length = 0;
                 // if server returns a multiple error validation.
                 if (typeof(error_) === "object") {
@@ -116,8 +120,6 @@
     {#each serverErrors as error (error)}
         {/* @ts-ignore */ null}
         <div class="uk-alert-danger" uk-alert>
-            {/* @ts-ignore */ null}
-            <a href={null} onclick={() => serverErrors.length = 0} class="uk-alert-close" aria-label="alert-close" uk-close={true}></a>
             <p>{error.message}</p>
         </div>
     {/each}
@@ -148,18 +150,24 @@
             </div>
         {/each}
 
-        {#if PUBLIC_CF_ENABLE_TURNSTILE === "true" && isFormValid}
-            <Turnstile
-                sitekey={PUBLIC_CF_TURNSTILE_SITE_KEY}
-                action="signup"
-                callback={(cfToken) => {
-                    cfTurnsTileToken = cfToken;
-                }}
-            />
+        {#if enableTurnstile}
+            {#key  serverErrors.length}
+                <Turnstile
+                    sitekey={PUBLIC_CF_TURNSTILE_SITE_KEY}
+                    action="signup"
+                    callback={(cfToken) => {
+                        cfTurnsTileToken = cfToken;
+                    }}
+                />
+            {/key}
         {/if}
 
         <div class="uk-margin">
-            <button disabled={formSubmitted || cfTurnsTileToken == null} class="uk-button uk-button-primary uk-width-1-1">Continue</button>
+            <button
+                disabled={formSubmitted || !isFormValid || (enableTurnstile && cfTurnsTileToken == null)}
+                class="uk-button uk-button-primary uk-width-1-1">
+                Continue
+            </button>
         </div>
 
         <!-- Temporarily remove this part. -->

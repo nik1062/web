@@ -5,8 +5,11 @@
 
     import { invalidateAll } from '$app/navigation';
 
+    import VaultCardAdd from '$components/Vault/types/Card/VaultCardAdd.svelte';
     import VaultLoginAdd from '$components/Vault/types/Login/VaultLoginAdd.svelte';
     import VaultSecureNoteAdd from '$components/Vault/types/SecureNote/VaultSecureNoteAdd.svelte';
+    import VaultDatabaseAdd from '$components/Vault/types/Database/VaultDatabaseAdd.svelte';
+
     import { searchFilter } from '$lib/stores';
     import { logoutAccount } from '$lib/services/accounts';
 
@@ -14,7 +17,9 @@
 
     const ModalMapper: { [key: string]: any } = {
         "login": VaultLoginAdd,
-        "secureNote": VaultSecureNoteAdd
+        "secureNote": VaultSecureNoteAdd,
+        "card": VaultCardAdd,
+        "database": VaultDatabaseAdd,
     };
 
     const ModalComponent = $derived(ModalMapper[selectedModal!]);
@@ -56,6 +61,19 @@
                             href={null}
                             uk-toggle="target: #vault-modal"
                             onclick={() => {
+                                selectedModal = "card";
+                                UIkit.dropdown("#new-item-dropdown").hide();
+                            }}>
+                            <Icon class="uk-margin-small-right"  icon="hugeicons:credit-card" width="24" height="24" />
+                            Card
+                        </a>
+                    </li>
+                    <li class="uk-text-default">
+                        { /* @ts-ignore */ null }
+                        <a
+                            href={null}
+                            uk-toggle="target: #vault-modal"
+                            onclick={() => {
                                 selectedModal = "login";
                                 UIkit.dropdown("#new-item-dropdown").hide();
                             }}>
@@ -75,6 +93,20 @@
                             { /* @ts-ignore */ null }
                             <Icon class="uk-margin-small-right"  icon="hugeicons:notebook" width="24" height="24" />
                             Secure note
+                        </a>
+                    </li>
+                    <li class="uk-text-default">
+                        { /* @ts-ignore */ null }
+                        <a
+                            href={null}
+                            uk-toggle="target: #vault-modal"
+                            onclick={() => {
+                                selectedModal = "database";
+                                UIkit.dropdown("#new-item-dropdown").hide();
+                            }}>
+                            { /* @ts-ignore */ null }
+                            <Icon class="uk-margin-small-right"  icon="hugeicons:database" width="24" height="24" />
+                            Database
                         </a>
                     </li>
                 </ul>

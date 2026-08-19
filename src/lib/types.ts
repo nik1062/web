@@ -1,17 +1,44 @@
+export interface CipherCardData {
+  cardholderName: string;
+  number: string;
+  brand: string;
+  expMonth: string;
+  expYear: string;
+  securityCode: string;
+}
+
+export interface CipherDatabaseData {
+  engine: string;
+  connectionType: string;
+  url?: string;
+  host?: string;
+  port?: string;
+  database?: string;
+  username?: string;
+  password?: string;
+}
+
 export interface CipherLoginData {
   username: string;
   password: string;
+  authenticatorKey: string;
 }
 
-export interface CipherSecureNoteData {
-  note: string;
+export interface CipherSecuresNoteData {
+  type: string;
 }
 
-export type CipherData = CipherLoginData | CipherSecureNoteData;
+export type CipherData =
+  | CipherLoginData
+  | CipherSecuresNoteData
+  | CipherCardData
+  | CipherDatabaseData;
 
 export enum CipherType {
+  CARD = "CARD",
   LOGIN = "LOGIN",
   SECURE_NOTE = "SECURE_NOTE",
+  DATABASE = "DATABASE",
 }
 
 export enum CipherStatus {
@@ -26,16 +53,18 @@ export enum VaultStatus {
   DELETED = "DELETED",
 }
 
+// Cipher data that are encrypted and decrypted from vault item data.
 export interface Cipher {
   id?: string;
   isFavorite: string;
   type: CipherType;
   key: string;
   name: string;
-  data: CipherData;
+  notes: string;
   status: string;
   created?: Date | null;
   updated?: Date | null;
+  data?: CipherData | null;
 }
 
 export interface VaultData {
@@ -43,23 +72,43 @@ export interface VaultData {
   isFavorite: boolean;
   type: CipherType;
   name: string;
+  notes: string;
   status: VaultStatus;
   content?: any;
 }
 
+// This is the items that are shown at the list of vault items
 export interface VaultItem extends VaultData {
   content: string;
 }
 
-export interface VaultContentData extends VaultData {
-  data: CipherData;
+// This is the vault's data on view/edit form
+// when a user selects a vault item on the list.
+export interface VaultItemDetail<T extends CipherData> extends VaultData {
+  data: T;
+  created: Date;
+  updated: Date;
 }
 
 export enum CipherCategory {
   ARCHIVES = "ARCHIVES",
   All = "ALL",
   FAVORITES = "FAVORITES",
+  CARDS = "CARDS",
   LOGINS = "LOGINS",
   SECURE_NOTES = "SECURE_NOTES",
+  DATABASES = "DATABASES",
   RECENTLY_DELETED = "DELETED",
 }
+
+export interface FormItemDetails {
+  name: string;
+  notes: string | null;
+}
+
+export interface FormItemHistory {
+  lastEdited: Date;
+  created: Date;
+}
+
+export type FormCallBack = (args: any) => void;

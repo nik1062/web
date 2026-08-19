@@ -1,14 +1,194 @@
-export class ProtectedData {
-  data: Uint8Array<ArrayBuffer>;
-  mac: Uint8Array<ArrayBuffer>;
-  iv: Uint8Array<ArrayBuffer>;
+import { authenticator } from "otplib";
 
-  constructor(databuffer: Uint8Array<ArrayBuffer>) {
-    const IV_START_LEN = databuffer.length - 16;
-    const MAC_START_LEN = IV_START_LEN - 32;
+import UIkit from "uikit";
 
-    this.iv = databuffer.slice(IV_START_LEN, databuffer.byteLength);
-    this.mac = databuffer.slice(MAC_START_LEN, IV_START_LEN);
-    this.data = databuffer.slice(0, MAC_START_LEN);
+import type { CipherCardData, CipherData, CipherDatabaseData, CipherLoginData } from "$lib/types";
+
+const CLIPBOARD_CLEAR_DELAY = 1000 * 30; // 30 seconds
+
+export abstract class VaultDetailField {
+  value: any | null;
+  label: string;
+  type: "text" | "password" | "datetime" | "otp";
+  hidden: boolean;
+
+  constructor(
+    value: any | null,
+    label: string,
+    type: "text" | "password" | "datetime" | "otp",
+    hidden: boolean = false
+  ) {
+    this.value = value;
+    this.label = label;
+    this.type = type;
+    this.hidden = hidden;
+  }
+
+  public displayValue() {
+    return this.value;
+  }
+
+  public copyEvent() {
+    navigator.clipboard.writeText(this.value);
+    this.copyEventFeedback();
+  }
+
+  protected copyEventFeedback() {
+    setTimeout(() => {
+      navigator.clipboard.writeText("");
+    }, CLIPBOARD_CLEAR_DELAY);
+    UIkit.notification({
+      message: `<div class='uk-alert-success uk-text-default uk-padding-small'>${this.label} copied!<div>`,
+      pos: "top-right",
+      timeout: 5000,
+    });
+  }
+}
+
+export class VaultDetailTextField extends VaultDetailField {
+  constructor(value: any | null, label: string, hidden: boolean = false) {
+    super(value, label, "text", hidden);
+  }
+}
+
+export class VaultDetailPasswordField extends VaultDetailField {
+  toggleState: boolean = false;
+
+  constructor(value: any | null, label: string, hidden: boolean = false) {
+    super(value, label, "password", hidden);
+  }
+
+  displayValue() {
+    return this.toggleState ? this.value : "••••••••";
+  }
+
+  togglePassword(): boolean {
+    this.toggleState = !this.toggleState;
+    return this.toggleState;
+  }
+}
+
+export class VaultDetailTOTPField extends VaultDetailField {
+  constructor(value: any | null, label: string, hidden: boolean = false) {
+    super(value, label, "otp", hidden);
+  }
+
+  displayValue() {
+    return authenticator.generate(this.value);
+  }
+
+  getRemainingSeconds(): number {
+    return authenticator.timeRemaining();
+  }
+
+  public copyEvent() {
+    navigator.clipboard.writeText(this.displayValue());
+    this.copyEventFeedback();
+  }
+}
+
+abstract class VaultDetailComponentData<T extends CipherData> {
+  public data: T;
+
+  fields: Array<VaultDetailField>;
+
+  constructor(data: T) {
+    this.data = data;
+
+    // filter out empty fields.
+    this.fields = this.fieldDefinitions().filter(
+      (field) => field.value !== null && field.value !== ""
+    );
+  }
+
+  protected abstract fieldDefinitions(): Array<VaultDetailField>;
+}
+
+export class VaultCardDetailComponentData extends VaultDetailComponentData<CipherCardData> {
+  constructor(data: CipherCardData) {
+    super(data);
+  }
+
+  protected fieldDefinitions() {
+    const fields: Array<VaultDetailField> = [
+      new VaultDetailTextField(this.data.cardholderName, "Cardholder Name"),
+      new VaultDetailPasswordField(this.data.number, "Card Number"),
+      new VaultDetailTextField(this.data.brand, "Brand", true),
+    ];
+
+    if (this.data.expMonth || this.data.expYear) {
+      // Nothing to worry reaching year 3000.
+      const currentMillennia = 2000;
+      const month = this.data.expMonth || "__";
+      let year = this.data.expYear || "____";
+
+      if (year.length > 4) {
+        const currentYear = new Date().getFullYear();
+        const currentYearWithinMillenia = currentYear - currentMillennia;
+
+        // Get the last x digit of the provided year
+        // where x is the char length of currentYearWithinMillenia.
+        const calculatedYearWithinMillenia = year
+          .toString()
+          .slice(-String(currentYearWithinMillenia).length);
+
+        year = (
+          currentMillennia + parseInt(calculatedYearWithinMillenia)
+        ).toString();
+      } else if (year.length < 4) {
+        year = (currentMillennia + parseInt(year)).toString();
+      }
+
+      // Index order is important for display.
+      fields.push(
+        ...[
+          new VaultDetailTextField(`${month}/${year}`, "Expiration"),
+          new VaultDetailPasswordField(this.data.securityCode, "Security Code"),
+        ]
+      );
+    }
+
+    return fields;
+  }
+}
+
+export class VaultLoginDetailComponentData extends VaultDetailComponentData<CipherLoginData> {
+  constructor(data: CipherLoginData) {
+    super(data);
+  }
+
+  protected fieldDefinitions() {
+    return [
+      new VaultDetailTextField(this.data.username, "Username"),
+      new VaultDetailPasswordField(this.data.password, "Password"),
+      new VaultDetailTOTPField(
+        this.data.authenticatorKey,
+        "Verification code (TOTP)"
+      ),
+    ];
+  }
+}
+
+export class VaultDatabaseDetailComponentData extends VaultDetailComponentData<CipherDatabaseData> {
+  constructor(data: CipherDatabaseData) {
+    super(data);
+  }
+
+  protected fieldDefinitions() {
+    const fields: Array<VaultDetailField> = [
+      new VaultDetailTextField(this.data.engine, "Engine")
+    ];
+
+    if (this.data.connectionType === "URL") {
+      fields.push(new VaultDetailPasswordField(this.data.url, "Connection URL"));
+    } else {
+      if (this.data.host) fields.push(new VaultDetailTextField(this.data.host, "Host"));
+      if (this.data.port) fields.push(new VaultDetailTextField(this.data.port, "Port"));
+      if (this.data.database) fields.push(new VaultDetailTextField(this.data.database, "Database"));
+      if (this.data.username) fields.push(new VaultDetailTextField(this.data.username, "Username"));
+      if (this.data.password) fields.push(new VaultDetailPasswordField(this.data.password, "Password"));
+    }
+
+    return fields;
   }
 }

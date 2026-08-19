@@ -1,7 +1,7 @@
 <script lang="ts">
     import { getContext, onMount } from "svelte";
 
-    import LoginForm from "$components/Vault/types/Login/_LoginForm.svelte";
+    import DatabaseForm from "$components/Vault/types/Database/_DatabaseForm.svelte";
     import ItemForm from "$components/Vault/types/templates/CreateUpdateItemForm.svelte";
 
     import { extractSymmetricKey } from "$lib/key-generation";
@@ -9,7 +9,7 @@
     import { encryptVaultDetailForUpdate, handleCipherResponse, loadVaultItemDetailFromStore } from "$lib/vaults";
 
     import type { SymmetricKey } from "$lib/models/keys";
-    import type { Cipher, CipherLoginData, VaultItemDetail } from "$lib/types";
+    import type { Cipher, CipherDatabaseData, VaultItemDetail } from "$lib/types";
 
     let { formId, vaultId, isEditMode = $bindable() } = $props();
 
@@ -19,12 +19,12 @@
     const errors: Array<string> = [];
 
     let sk: SymmetricKey | null = $state(null);
-    let vaultItemDetail: VaultItemDetail<CipherLoginData> | null = $state(null);
+    let vaultItemDetail: VaultItemDetail<CipherDatabaseData> | null = $state(null);
 
     const onSave = async () => {
         errors.length = 0;
 
-        const cipher: Cipher = await encryptVaultDetailForUpdate<CipherLoginData>({
+        const cipher: Cipher = await encryptVaultDetailForUpdate<CipherDatabaseData>({
             vaultDetail: vaultItemDetail!,
             sk: sk!,
         });
@@ -40,7 +40,7 @@
 
     onMount(async () => {
         sk = await extractSymmetricKey(mk, epsk);
-        vaultItemDetail = await loadVaultItemDetailFromStore<CipherLoginData>(vaultId, sk);
+        vaultItemDetail = await loadVaultItemDetailFromStore<CipherDatabaseData>(vaultId, sk);
     });
 
 </script>
@@ -53,7 +53,7 @@
             onsubmit={onSave} 
             {errors}
         >
-            <LoginForm title="Login Credentials" data={vaultItemDetail.data} />
+            <DatabaseForm title="Database Credentials" data={vaultItemDetail.data} />
         </ItemForm>
     </div>
 {/if}

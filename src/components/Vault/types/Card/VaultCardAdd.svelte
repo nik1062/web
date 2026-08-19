@@ -3,24 +3,27 @@
 
     import { getContext } from "svelte";
 
-    import LoginForm from "$components/Vault/types/Login/_LoginForm.svelte";
+    import CardForm from "$components/Vault/types/Card/_CardForm.svelte";
     import ItemForm from "$components/Vault/types/templates/CreateUpdateItemForm.svelte";
 
     import { newVaultItem } from "$lib/stores";
-    import { CipherType, type CipherLoginData } from "$lib/types";
+    import { CipherType, type CipherCardData } from "$lib/types";
     import { createVaultItem } from "$lib/vaults";
 
     const mk: string = getContext("mk");
     const epsk: string = getContext("epsk");
 
     let itemDetails = {
-        name: "Login",
+        name: "Card",
         notes: "",
     };
-    let itemData: CipherLoginData = {
-        username: "",
-        password: "",
-        authenticatorKey: ""
+    let itemData: CipherCardData = {
+        cardholderName: "",
+        number: "",
+        brand: "",
+        expMonth: "",
+        expYear: "",
+        securityCode: "",
     };
     let errors: Array<string> = [];
 
@@ -32,15 +35,14 @@
         }
 
         try {
-
-           $newVaultItem = await createVaultItem({
+            $newVaultItem = await createVaultItem({
                 mk:mk,
                 epsk:epsk,
                 name:itemDetails.name,
                 notes:itemDetails.notes,
-                content:itemData.username || itemDetails.name,
+                content:itemData.brand || itemData.cardholderName,
                 itemData:itemData,
-                cipherType:CipherType.LOGIN
+                cipherType:CipherType.CARD
             })
 
             UIkit.modal("#vault-modal").hide();
@@ -50,9 +52,10 @@
                 // Reset to default values.
                 setTimeout(() => {
                     errors = [];
-                    itemDetails.name = "Login";
+                    itemDetails.name = "Card";
                 }, 500);
             });
+
         } catch (error) {
             errors = [(error as Error).message];
         }
@@ -67,7 +70,7 @@
         {itemDetails}
         {errors}
     >
-        <LoginForm title="Login Credentials" data={itemData} />
+        <CardForm title="Card details" data={itemData} />
     </ItemForm>
 </div>
 

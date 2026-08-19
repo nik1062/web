@@ -3,24 +3,29 @@
 
     import { getContext } from "svelte";
 
-    import LoginForm from "$components/Vault/types/Login/_LoginForm.svelte";
+    import DatabaseForm from "$components/Vault/types/Database/_DatabaseForm.svelte";
     import ItemForm from "$components/Vault/types/templates/CreateUpdateItemForm.svelte";
 
     import { newVaultItem } from "$lib/stores";
-    import { CipherType, type CipherLoginData } from "$lib/types";
+    import { CipherType, type CipherDatabaseData } from "$lib/types";
     import { createVaultItem } from "$lib/vaults";
 
     const mk: string = getContext("mk");
     const epsk: string = getContext("epsk");
 
     let itemDetails = {
-        name: "Login",
+        name: "Database",
         notes: "",
     };
-    let itemData: CipherLoginData = {
+    let itemData: CipherDatabaseData = {
+        engine: "",
+        connectionType: "URL",
+        url: "",
+        host: "",
+        port: "",
+        database: "",
         username: "",
-        password: "",
-        authenticatorKey: ""
+        password: ""
     };
     let errors: Array<string> = [];
 
@@ -38,9 +43,9 @@
                 epsk:epsk,
                 name:itemDetails.name,
                 notes:itemDetails.notes,
-                content:itemData.username || itemDetails.name,
+                content:itemData.engine || itemDetails.name,
                 itemData:itemData,
-                cipherType:CipherType.LOGIN
+                cipherType:CipherType.DATABASE
             })
 
             UIkit.modal("#vault-modal").hide();
@@ -50,7 +55,7 @@
                 // Reset to default values.
                 setTimeout(() => {
                     errors = [];
-                    itemDetails.name = "Login";
+                    itemDetails.name = "Database";
                 }, 500);
             });
         } catch (error) {
@@ -62,18 +67,18 @@
 
 <div class="uk-modal-body">
     <ItemForm
-        id="cardForm"
+        id="databaseForm"
         onsubmit={onSubmit}
         {itemDetails}
         {errors}
     >
-        <LoginForm title="Login Credentials" data={itemData} />
+        <DatabaseForm title="Database Credentials" data={itemData} />
     </ItemForm>
 </div>
 
 <div class="uk-modal-footer uk-flex uk-flex-row-reverse">
     <div class="uk-margin">
-        <button form="cardForm" type="submit" class="uk-button uk-button-primary uk-border-rounded">Save</button>
+        <button form="databaseForm" type="submit" class="uk-button uk-button-primary uk-border-rounded">Save</button>
         <button onclick={() => {UIkit.modal("#vault-modal").hide()}}  class="uk-button uk-button-default uk-border-rounded">Cancel</button>
     </div>
 </div>

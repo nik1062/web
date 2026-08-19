@@ -1,15 +1,35 @@
-import { arrayBufferToHex, hexToArrayBuffer } from "$lib/bytes";
-import { ProtectedData } from "./data";
+import { arrayBufferToBase64, base64ToArrayBuffer } from "$lib/bytes";
 
 const BIT_SIZE = 8;
 
+/**
+ * Encrypted and signed cipher data.
+ */
+export class ProtectedData {
+  data: Uint8Array;
+  mac: Uint8Array;
+  iv: Uint8Array;
+
+  constructor(databuffer: Uint8Array) {
+    const IV_START_LEN = databuffer.length - 16;
+    const MAC_START_LEN = IV_START_LEN - 32;
+
+    this.iv = databuffer.slice(IV_START_LEN, databuffer.byteLength);
+    this.mac = databuffer.slice(MAC_START_LEN, IV_START_LEN);
+    this.data = databuffer.slice(0, MAC_START_LEN);
+  }
+}
+
+/**
+ * Base key that imports AES and MAC keys from the keybuffer.
+ */
 abstract class BaseKey {
-  protected aeskeyBuffer: Uint8Array<ArrayBuffer>;
-  protected mackeyBuffer: Uint8Array<ArrayBuffer>;
+  protected aeskeyBuffer: Uint8Array;
+  protected mackeyBuffer: Uint8Array;
 
-  keybuffer: Uint8Array<ArrayBuffer>;
+  keybuffer: Uint8Array;
 
-  constructor(keybuffer: Uint8Array<ArrayBuffer>) {
+  constructor(keybuffer: Uint8Array) {
     this.keybuffer = keybuffer;
     this.aeskeyBuffer = keybuffer.slice(0, 32);
     this.mackeyBuffer = keybuffer.slice(32, 64);
@@ -35,15 +55,15 @@ abstract class BaseKey {
     );
   }
 
-  toBase64() {
-    return btoa(arrayBufferToHex(this.keybuffer));
+  toBase64(): string {
+    return btoa(arrayBufferToBase64(this.keybuffer));
   }
 
   static fromBase64<T extends BaseKey>(
-    this: new (encodedKey: any) => T,
-    encodedKey: any
+    this: new (encodedKey: Uint8Array) => T,
+    encodedKey: string
   ): T {
-    return new this(hexToArrayBuffer(atob(encodedKey)));
+    return new this(base64ToArrayBuffer(atob(encodedKey)));
   }
 }
 
@@ -51,29 +71,25 @@ abstract class BaseKey {
  * A key that can do AES encrypt-decrypt and HMAC sign-verify.
  */
 export abstract class AESHMACKey extends BaseKey {
-  constructor(keybuffer: Uint8Array<ArrayBuffer>) {
+  constructor(keybuffer: Uint8Array) {
     super(keybuffer);
   }
 
-  protected async hmacSign(
-    data: Uint8Array<ArrayBuffer>
-  ): Promise<Uint8Array<ArrayBuffer>> {
+  private async hmacSign(data: Uint8Array): Promise<Uint8Array> {
     const macKey = await this.getMACKey();
     const buffer = await crypto.subtle.sign("HMAC", macKey, data);
     return new Uint8Array(buffer);
   }
 
-  protected async hmacVerify(
-    signature: Uint8Array<ArrayBuffer>,
-    data: Uint8Array<ArrayBuffer>
+  private async hmacVerify(
+    signature: Uint8Array,
+    data: Uint8Array
   ): Promise<boolean> {
     const macKey = await this.getMACKey();
     return await crypto.subtle.verify("HMAC", macKey, signature, data);
   }
 
-  protected async encryptSign(
-    data: Uint8Array
-  ): Promise<Uint8Array<ArrayBuffer>> {
+  protected async encryptSign(data: Uint8Array): Promise<Uint8Array> {
     const iv = crypto.getRandomValues(new Uint8Array(16));
     const counterLength = iv.byteLength * BIT_SIZE;
 
@@ -84,18 +100,21 @@ export abstract class AESHMACKey extends BaseKey {
     );
 
     const buffer = new Uint8Array(encBuffer);
-    const mac = await this.hmacSign(buffer);
+    const macInput = new Uint8Array([...buffer, ...iv]);
+    const mac = await this.hmacSign(macInput);
 
     // combine data into a single byte.
     return new Uint8Array([...buffer, ...mac, ...iv]);
   }
 
   protected async verifyDecrypt(
-    data: Uint8Array<ArrayBuffer>,
-    mac: Uint8Array<ArrayBuffer>,
-    iv: Uint8Array<ArrayBuffer>
-  ): Promise<Uint8Array<ArrayBuffer>> {
-    const valid = await this.hmacVerify(mac, data);
+    data: Uint8Array,
+    mac: Uint8Array,
+    iv: Uint8Array
+  ): Promise<Uint8Array> {
+    const macInput = new Uint8Array([...data, ...iv]);
+    const valid = await this.hmacVerify(mac, macInput);
+
     if (!valid) {
       throw new Error("Invalid MAC signature!");
     }
@@ -119,14 +138,14 @@ export abstract class AESHMACKey extends BaseKey {
    */
   async encrypt(data: Uint8Array): Promise<string> {
     const buffer = await this.encryptSign(data);
-    return btoa(arrayBufferToHex(buffer));
+    return btoa(arrayBufferToBase64(buffer));
   }
 
   async decryptText(encodedData: string): Promise<string> {
     const data = atob(encodedData);
     // encrypted data | mac | iv
-    const databuffer = hexToArrayBuffer(data);
-    const pData = new ProtectedData(databuffer);
+    const buffer = base64ToArrayBuffer(data);
+    const pData = new ProtectedData(buffer);
     const decryptedBuffer = await this.verifyDecrypt(
       pData.data,
       pData.mac,
@@ -138,19 +157,22 @@ export abstract class AESHMACKey extends BaseKey {
 }
 
 /**
- * A key that can protect Key and extract from a ProtectedKey.
+ * Generic Key wrapper that can protect (encrypt+sign) another key and extract
+ * (verify+decrypt) a protected key.
  */
-export abstract class Key extends AESHMACKey {
-  async protectKey(key: Key | AESHMACKey): Promise<ProtectedKey> {
+export abstract class Key<
+  PK extends ProtectedKey,
+  K extends AESHMACKey | Key<any, any>,
+> extends AESHMACKey {
+  protected abstract setProtectedKeyType(keybuffer: Uint8Array): PK;
+  protected abstract getKeyType(keybuffer: Uint8Array): K;
+
+  async protectKey(key: K): Promise<PK> {
     const pskBuffer = await this.encryptSign(key.keybuffer);
     return this.setProtectedKeyType(pskBuffer);
   }
 
-  protected abstract setProtectedKeyType(
-    keybuffer: Uint8Array<ArrayBuffer>
-  ): ProtectedKey;
-
-  async extractKey(protectedKey: ProtectedKey): Promise<Key | AESHMACKey> {
+  async extractKey(protectedKey: PK): Promise<K> {
     const decryptedBuffer = await this.verifyDecrypt(
       protectedKey.key,
       protectedKey.mac,
@@ -158,27 +180,24 @@ export abstract class Key extends AESHMACKey {
     );
     return this.getKeyType(decryptedBuffer);
   }
-
-  protected abstract getKeyType(
-    keybuffer: Uint8Array<ArrayBuffer>
-  ): Key | AESHMACKey;
 }
 
 /**
  * Key to protect and extract a Symmetric Key.
  */
-export class StretchedMasterKey extends Key {
-  constructor(keybuffer: Uint8Array<ArrayBuffer>) {
+export class StretchedMasterKey extends Key<
+  ProtectedSymmetricKey,
+  SymmetricKey
+> {
+  constructor(keybuffer: Uint8Array) {
     super(keybuffer);
   }
 
-  protected getKeyType(keybuffer: Uint8Array<ArrayBuffer>): Key {
+  protected getKeyType(keybuffer: Uint8Array): SymmetricKey {
     return new SymmetricKey(keybuffer);
   }
 
-  protected setProtectedKeyType(
-    keybuffer: Uint8Array<ArrayBuffer>
-  ): ProtectedSymmetricKey {
+  protected setProtectedKeyType(keybuffer: Uint8Array): ProtectedSymmetricKey {
     return new ProtectedSymmetricKey(keybuffer);
   }
 }
@@ -186,18 +205,16 @@ export class StretchedMasterKey extends Key {
 /**
  * Key to protect and extract a Cipher Key.
  */
-export class SymmetricKey extends Key {
-  constructor(keybuffer: Uint8Array<ArrayBuffer>) {
+export class SymmetricKey extends Key<ProtectedCipherKey, CipherKey> {
+  constructor(keybuffer: Uint8Array) {
     super(keybuffer);
   }
 
-  protected getKeyType(keybuffer: Uint8Array<ArrayBuffer>): AESHMACKey {
+  protected getKeyType(keybuffer: Uint8Array): AESHMACKey {
     return new CipherKey(keybuffer);
   }
 
-  protected setProtectedKeyType(
-    keybuffer: Uint8Array<ArrayBuffer>
-  ): ProtectedCipherKey {
+  protected setProtectedKeyType(keybuffer: Uint8Array): ProtectedCipherKey {
     return new ProtectedCipherKey(keybuffer);
   }
 }
@@ -206,25 +223,25 @@ export class SymmetricKey extends Key {
  * Key to encrypt and decrypt a cipher data.
  */
 export class CipherKey extends AESHMACKey {
-  constructor(keybuffer: Uint8Array<ArrayBuffer>) {
+  constructor(keybuffer: Uint8Array) {
     super(keybuffer);
   }
 }
 
 abstract class ProtectedKey extends BaseKey {
-  private IV_START_LEN = this.keybuffer.length - 16;
-  private MAC_START_LEN = this.IV_START_LEN - 32;
+  key: Uint8Array;
+  mac: Uint8Array;
+  iv: Uint8Array;
 
-  key: Uint8Array<ArrayBuffer>;
-  mac: Uint8Array<ArrayBuffer>;
-  iv: Uint8Array<ArrayBuffer>;
-
-  constructor(keybuffer: Uint8Array<ArrayBuffer>) {
+  constructor(keybuffer: Uint8Array) {
     super(keybuffer);
 
-    this.iv = keybuffer.slice(this.IV_START_LEN, keybuffer.byteLength);
-    this.mac = keybuffer.slice(this.MAC_START_LEN, this.IV_START_LEN);
-    this.key = keybuffer.slice(0, this.MAC_START_LEN);
+    const IV_START_LEN = keybuffer.length - 16;
+    const MAC_START_LEN = IV_START_LEN - 32;
+
+    this.iv = keybuffer.slice(IV_START_LEN, keybuffer.byteLength);
+    this.mac = keybuffer.slice(MAC_START_LEN, IV_START_LEN);
+    this.key = keybuffer.slice(0, MAC_START_LEN);
   }
 }
 
@@ -232,7 +249,7 @@ abstract class ProtectedKey extends BaseKey {
  * Encrypted and signed symmetric key.
  */
 export class ProtectedSymmetricKey extends ProtectedKey {
-  constructor(keybuffer: Uint8Array<ArrayBuffer>) {
+  constructor(keybuffer: Uint8Array) {
     super(keybuffer);
   }
 }
@@ -241,7 +258,7 @@ export class ProtectedSymmetricKey extends ProtectedKey {
  * Encrypted and signed cipher key.
  */
 export class ProtectedCipherKey extends ProtectedKey {
-  constructor(keybuffer: Uint8Array<ArrayBuffer>) {
+  constructor(keybuffer: Uint8Array) {
     super(keybuffer);
   }
 }

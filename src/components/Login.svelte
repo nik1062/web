@@ -9,7 +9,7 @@
 
     import { generateLoginhash, generateMasterKey } from "$lib/key-generation";
     import { loginAccount } from "$lib/services/accounts";
-    import { arrayBufferToHex } from "$lib/bytes";
+    import { arrayBufferToBase64 } from "$lib/bytes";
     
 
     type FormField = {
@@ -32,6 +32,8 @@
         toggle: false,
     });
 
+    const enableTurnstile = PUBLIC_CF_ENABLE_TURNSTILE == "true";
+
     let isFormValid = $derived.by(() => {
         if (emailInput.invalid == null || masterPasswordInput.invalid == null) {
             return false;
@@ -44,8 +46,12 @@
         "master-password": masterPasswordInput
     };
 
+    // Gets cleared when you submit the form.
+    // Also basis for re-rendering turnstile when login fails.
     let loginError = $state(null);
-    let cfTurnsTileToken: string | undefined = $state();
+    // Set to null again when login fails to force turnstile re-render.
+    let cfTurnsTileToken: string | null = $state(null);
+
     let formSubmitted = $state(false);
 
     // --
@@ -58,7 +64,10 @@
 
     const onFormSubmit = async (e: any) => {
         e.preventDefault();
+
         formSubmitted = true;
+        loginError = null;
+
         for (const key of Object.keys(formFields)) {
             const el = e.target.elements[key];
             const field = formFields[key];
@@ -70,12 +79,13 @@
             const loginHash = await generateLoginhash(mk, masterPasswordInput.value!);
 
             try {
-                const response = await loginAccount(emailInput.value!, loginHash, cfTurnsTileToken);
-                localStorage.setItem("mk", arrayBufferToHex(mk));
+                const response = await loginAccount(emailInput.value!, loginHash, cfTurnsTileToken!);
+                localStorage.setItem("mk", arrayBufferToBase64(mk));
                 localStorage.setItem("epsk", response.data.psk);
                 window.location.assign(page.url.searchParams.get("next") ?? "/");
             } catch (error: any) {
-                loginError = error.error
+                cfTurnsTileToken = null;
+                loginError = error.error;
             }
         }
         formSubmitted = false;
@@ -92,8 +102,6 @@
     {#if loginError}
         { /* @ts-ignore */ null }
         <div class="uk-alert-danger" uk-alert>
-            { /* @ts-ignore */ null }
-            <a href={null} onclick={() => loginError = null} class="uk-alert-close" aria-label="close-alert" uk-close></a>
             <p>{loginError}</p>
         </div>
     {/if}
@@ -162,18 +170,24 @@
 
     </div>
 
-    {#if PUBLIC_CF_ENABLE_TURNSTILE === "true" && isFormValid}
-        <Turnstile
-            sitekey={PUBLIC_CF_TURNSTILE_SITE_KEY}
-            action="login"
-            callback={(cfToken) => {
-                cfTurnsTileToken = cfToken;
-            }}
-        />
+    {#if enableTurnstile }
+        {#key loginError}
+            <Turnstile
+                sitekey={PUBLIC_CF_TURNSTILE_SITE_KEY}
+                action="login"
+                callback={(cfToken) => {
+                    cfTurnsTileToken = cfToken;
+                }}
+            />
+        {/key}
     {/if}
 
     <div class="uk-margin">
-        <button disabled={formSubmitted || cfTurnsTileToken == null} class="uk-button uk-button-primary uk-width-1-1">Login</button>
+        <button
+            disabled={formSubmitted || !isFormValid || (enableTurnstile && cfTurnsTileToken == null)}
+            class="uk-button uk-button-primary uk-width-1-1">
+            Login
+        </button>
     </div>
 
     <p class="uk-text-center">

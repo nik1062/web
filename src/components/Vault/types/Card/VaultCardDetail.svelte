@@ -4,23 +4,28 @@
     import ViewItemForm from "$components/Vault/types/templates/ViewItemForm.svelte";
 
     import { extractSymmetricKey } from "$lib/key-generation";
+    import { VaultCardDetailComponentData } from "$lib/models/data";
     import { loadVaultItemDetailFromStore } from "$lib/vaults";
-    import type { CipherSecuresNoteData, VaultItemDetail } from "$lib/types";
+
+    import type { CipherCardData, VaultItemDetail } from "$lib/types";
 
     const epsk: string = getContext("epsk");
     const mk: string = getContext("mk");
 
     let { vaultId } = $props();
 
-    let vaultItemDetail: VaultItemDetail<CipherSecuresNoteData> | null = $state(null);
+    let vaultItemDetail: VaultItemDetail<CipherCardData> | null = $state(null);
+    let componentData: VaultCardDetailComponentData | null = $state(null)
 
     onMount(async () => {
         const sk = await extractSymmetricKey(mk, epsk);
-        vaultItemDetail = await loadVaultItemDetailFromStore<CipherSecuresNoteData>(vaultId, sk);
+        vaultItemDetail = await loadVaultItemDetailFromStore<CipherCardData>(vaultId, sk);
+        componentData = new VaultCardDetailComponentData(vaultItemDetail.data);
     });
+
 </script>
 
-{#if vaultItemDetail}
+{#if componentData && vaultItemDetail}
     <ViewItemForm 
         itemDetails={
             {"name": vaultItemDetail.name, "notes": vaultItemDetail.notes}
@@ -31,5 +36,7 @@
                 "lastEdited": vaultItemDetail.updated,
             }
         }
+        detailTitle="{componentData.data.brand || 'Card'} details"
+        fields={componentData.fields} 
     />
 {/if}

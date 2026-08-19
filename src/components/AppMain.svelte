@@ -23,8 +23,6 @@
     const epsk: string = getContext("epsk");
     const mk: string = getContext("mk");
 
-    let isUnlock = $state(false);
-
     const selectVaultItem = () => {
         if ($vaultItemStore.length > 0) {
             if ($selectedVaultItem == null) {
@@ -50,6 +48,9 @@
         selectVaultItem();
     };
 
+    /**
+     * Decrypt ciphers for list of vault items display.
+     */
     const decryptCiphers = async (ciphers: Array<Cipher>): Promise<Array<VaultItem>> => {
         const result: Array<VaultItem> = []
         const sk = await extractSymmetricKey(mk, epsk);
@@ -60,35 +61,28 @@
         return result;
     };
 
+    let isUnlock = $state(false);
+    const categoryFilterFactory: Record<CipherCategory, (items: VaultItem[]) => VaultItem[]> = {
+        [CipherCategory.All]: (items) => items.filter(item => item.status === VaultStatus.ACTIVE),
+        [CipherCategory.FAVORITES]: (items) => items.filter(item => item.isFavorite && item.status === VaultStatus.ACTIVE),
+        [CipherCategory.CARDS]: (items) => items.filter(item => item.type === CipherType.CARD && item.status === VaultStatus.ACTIVE),
+        [CipherCategory.LOGINS]: (items) => items.filter(item => item.type === CipherType.LOGIN && item.status === VaultStatus.ACTIVE),
+        [CipherCategory.SECURE_NOTES]: (items) => items.filter(item => item.type === CipherType.SECURE_NOTE && item.status === VaultStatus.ACTIVE),
+        [CipherCategory.DATABASES]: (items) => items.filter(item => item.type === CipherType.DATABASE && item.status === VaultStatus.ACTIVE),
+        [CipherCategory.ARCHIVES]: (items) => items.filter(item => item.status === VaultStatus.ARCHIVED),
+        [CipherCategory.RECENTLY_DELETED]: (items) => items.filter(item => item.status === VaultStatus.DELETED),
+    };
+
     const categoryFilterUnsubscriber = categoryFilter.subscribe(async (category) => {
         if (!isUnlock || $cipherStore.length < 1) {
             return [];
         }
-
+        // Decrypt and assign to vaultItemStore.
         $vaultItemStore = await decryptCiphers($cipherStore);
+        // Apply category filter.
+        $vaultItemStore = categoryFilterFactory[category]($vaultItemStore);
 
-        switch(category) {
-            case CipherCategory.All:
-                $vaultItemStore = $vaultItemStore.filter(item => item.status == VaultStatus.ACTIVE);
-                break;
-            case CipherCategory.FAVORITES:
-                $vaultItemStore = $vaultItemStore.filter(item => item.isFavorite && item.status == VaultStatus.ACTIVE);
-                break;
-            case CipherCategory.LOGINS:
-                $vaultItemStore = $vaultItemStore.filter(item => item.type == CipherType.LOGIN && item.status == VaultStatus.ACTIVE);
-                break;
-            case CipherCategory.SECURE_NOTES:
-                $vaultItemStore = $vaultItemStore.filter(item => item.type == CipherType.SECURE_NOTE && item.status == VaultStatus.ACTIVE);
-                break;
-            case CipherCategory.ARCHIVES:
-                $vaultItemStore = $vaultItemStore.filter(item => item.status == VaultStatus.ARCHIVED);
-                break;
-            case CipherCategory.RECENTLY_DELETED:
-                $vaultItemStore = $vaultItemStore.filter(item => item.status == VaultStatus.DELETED);
-                break;
-        }
-
-        $vaultItemStore = $vaultItemStore.sort((a, b) => a.name.localeCompare(b.name));;
+        $vaultItemStore = $vaultItemStore.sort((a, b) => a.name.localeCompare(b.name));
         selectVaultItem();
     });
 

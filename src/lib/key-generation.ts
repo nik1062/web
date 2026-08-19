@@ -1,4 +1,4 @@
-import { arrayBufferToHex, hexToArrayBuffer } from "$lib/bytes";
+import { arrayBufferToBase64, base64ToArrayBuffer } from "$lib/bytes";
 import {
   CipherKey,
   ProtectedCipherKey,
@@ -10,7 +10,7 @@ import {
 export const generateMasterKey = async (
   email: string,
   masterPassword: string
-) => {
+): Promise<Uint8Array> => {
   const encoder = new TextEncoder();
   const salt = encoder.encode(email);
 
@@ -32,8 +32,8 @@ export const generateMasterKey = async (
 };
 
 export const generateStretchedMasterKey = async (
-  masterKey: Uint8Array<ArrayBuffer>
-) => {
+  masterKey: Uint8Array
+): Promise<StretchedMasterKey> => {
   const encoder = new TextEncoder();
 
   const algorithm = {
@@ -68,13 +68,13 @@ export const generateProtectedSymmetricKey = async (
   // Create random 512-bit Symmetric Key.
   const rawKey = crypto.getRandomValues(new Uint8Array(64));
   const sk = new SymmetricKey(rawKey);
-  return <ProtectedSymmetricKey>await smk.protectKey(sk);
+  return await smk.protectKey(sk);
 };
 
 export const generateLoginhash = async (
-  masterKey: Uint8Array<ArrayBuffer>,
+  masterKey: Uint8Array,
   masterPassword: string
-) => {
+): Promise<string> => {
   const encoder = new TextEncoder();
   const salt = encoder.encode(masterPassword);
 
@@ -94,10 +94,10 @@ export const generateLoginhash = async (
   );
 
   const buffer = await crypto.subtle.deriveBits(algorithm, baseKey, 256);
-  return arrayBufferToHex(buffer);
+  return arrayBufferToBase64(buffer);
 };
 
-export const generateCipherKey = async () => {
+export const generateCipherKey = (): CipherKey => {
   const ckeyBuffer = crypto.getRandomValues(new Uint8Array(64));
   return new CipherKey(ckeyBuffer);
 };
@@ -106,14 +106,14 @@ export async function extractSymmetricKey(
   mk: string,
   key: string | ProtectedSymmetricKey
 ): Promise<SymmetricKey> {
-  const smk = await generateStretchedMasterKey(hexToArrayBuffer(mk));
+  const smk = await generateStretchedMasterKey(base64ToArrayBuffer(mk));
   let psk;
   if (typeof key == "string") {
     psk = await ProtectedSymmetricKey.fromBase64(key);
   } else {
     psk = key;
   }
-  return <SymmetricKey>await smk.extractKey(psk);
+  return await smk.extractKey(psk);
 }
 
 export async function extractCipherKey(
@@ -121,7 +121,7 @@ export async function extractCipherKey(
   epck: string
 ): Promise<CipherKey> {
   const pck = await ProtectedCipherKey.fromBase64(epck);
-  return <CipherKey>await sk.extractKey(pck);
+  return await sk.extractKey(pck);
 }
 
 export async function generateAsymmetricKeys(): Promise<

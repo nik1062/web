@@ -29,6 +29,11 @@
                     { /* @ts-ignore */ null }
                     <a href class="uk-text-small x-nav-subheader">CATEGORIES <span uk-nav-parent-icon></span></a>
                     <ul class="uk-nav-sub uk-padding-remove">
+                        <li class:x-selected={$categoryFilter==CipherCategory.CARDS} class="x-nested-sidenav-item uk-border-rounded">
+                            <a href={null} onclick={() => { $categoryFilter=CipherCategory.CARDS }} class="uk-text-small">
+                                <Icon class="uk-margin-small-right" icon="hugeicons:credit-card" width="24" height="24" /> Cards
+                            </a>
+                        </li>
                         <li class:x-selected={$categoryFilter==CipherCategory.LOGINS} class="x-nested-sidenav-item uk-border-rounded">
                             <a href={null} onclick={() => { $categoryFilter=CipherCategory.LOGINS }} class="uk-text-small">
                                 <Icon class="uk-margin-small-right" icon="hugeicons:login-method" width="24" height="24" /> Logins
@@ -37,6 +42,11 @@
                         <li class:x-selected={$categoryFilter==CipherCategory.SECURE_NOTES} class="x-nested-sidenav-item uk-border-rounded">
                             <a href={null} onclick={() => { $categoryFilter=CipherCategory.SECURE_NOTES }} class="uk-text-small">
                                 <Icon class="uk-margin-small-right" icon="hugeicons:notebook" width="24" height="24" /> Secure Notes
+                            </a>
+                        </li>
+                        <li class:x-selected={$categoryFilter==CipherCategory.DATABASES} class="x-nested-sidenav-item uk-border-rounded">
+                            <a href={null} onclick={() => { $categoryFilter=CipherCategory.DATABASES }} class="uk-text-small">
+                                <Icon class="uk-margin-small-right" icon="hugeicons:database" width="24" height="24" /> Databases
                             </a>
                         </li>
                     </ul>
